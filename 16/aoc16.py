@@ -4,7 +4,7 @@ import copy
 import sys
 sys.setrecursionlimit(10000)
 
-testcase = True
+testcase = False
 if testcase:
     file = "test.txt"
 else:
@@ -25,13 +25,16 @@ class Path:
 #        self.coords = {(y,x): facing}  # y,x = facing
         self.score = 0
         self.cheapest_score = 0
+        self.fullpath = []
     def FindPath(self,paths,map,endy,endx,d):
         f = self.facing
         y = self.y  # from the current end...
         x = self.x
 
-#        if(d == 9):
+        # Limit to a reasonable search depth
+#        if(d == 7000):
 #            return
+        self.fullpath.append((y,x))
 
         next = {}
         if(f != "<" and map[y][x+1] == '.'):
@@ -74,7 +77,7 @@ class Path:
             # populate self.ends
             self.ends[(y,x,f)] = self.score
             return
-
+        
         # only one way forward means we just stay on this path
         if len(next) == 1:
             for n in next:
@@ -101,9 +104,9 @@ class Path:
 
                 # set self.ends
                 if(n_f == f):
-                    self.ends[(y,x,n_f)] = self.score
+                    self.ends[(ny,nx,n_f)] = self.score + n_score # ?
                 else:
-                    self.ends[(y,x,n_f)] = self.score + 1000
+                    self.ends[(ny,nx,n_f)] = self.score + n_score # ?  no difference n_score was already calculated
 
                 if( (ny,nx,n_f) not in paths):
                     new_path = Path(ny,nx,n_f)
@@ -112,15 +115,18 @@ class Path:
                     new_path.FindPath(paths,map,endy,endx,d+1)
 
 
-def Go(paths,cheapest_paths,p,endy,endx,score,d,cur_cp,cp):
+def Go(paths,cheapest_paths,p,endy,endx,score,d,cur_cp):
+ 
+    d += 1
+#    if(d > 3):
+#        exit(1)
 
-# cheapest_paths needs to store not just the cur_score
-# but the full path to get there.
-# 
-#
-
+    # For Part 2, record the cheapest path we took to get to this spot.
+    if paths[p].cheapest_score == 0 or score < paths[p].cheapest_score:
+        paths[p].cheapest_score = score
 
     for next in paths[p].ends:
+
         cur_score = score
         (ey,ex,f) = next
         e_score = paths[p].ends[next]
@@ -128,55 +134,66 @@ def Go(paths,cheapest_paths,p,endy,endx,score,d,cur_cp,cp):
         cur_cp = copy.deepcopy(cur_cp)
         cur_cp.append((ey,ex,f))
 
-        if(f == '>'):
-            next = (ey,ex+1,f)
-        elif(f == '<'):
-            next = (ey,ex-1,f)
-        elif(f == 'v'):
-            next = (ey+1,ex,f)
-        else:
-            next = (ey-1,ex,f)
-
-        cur_score += 1
         cur_score += e_score
 
+#        print("Next:",next, cur_score)
+
         if ey == endy and ex == endx:
+#            print("Found the end",cur_score)
+#            print(cur_cp)
             blaa = (ey,ex,f)
+
 #            print("end",f,")",cur_score,blaa)
-            if(blaa in cheapest_paths):
-                if(cur_score - 1 == cheapest_paths[blaa]):
-                    if(cur_score - 1 == 7036):
-                        cp.append(cur_cp)                    
-                if(cur_score - 1 < cheapest_paths[blaa]):
-                    cheapest_paths[blaa] = cur_score - 1
-                    if(cur_score - 1 == 7036):
-                        cp.append(cur_cp)
+            if(blaa in cheapest_paths):      
+                if(cur_score < cheapest_paths[blaa]):
+                    cheapest_paths[blaa] = cur_score
             else:
-                cheapest_paths[blaa] = cur_score - 1
-                if(cur_score - 1 == 7036):
-                    cp.append(cur_cp)
-            return e_score # ?
+                cheapest_paths[blaa] = cur_score
+
         else:
             if(next not in paths):
-                # deadend
-                return -1
+                continue
             else:
-                if(next in cheapest_paths):
-                    if(cur_score == cheapest_paths[next]):
-                        if(cur_score == 7036):
-                            cp.append(cur_cp)                        
+                if(next in cheapest_paths):                      
                     if(cur_score < cheapest_paths[next]):
                         cheapest_paths[next] = cur_score
-                        if(cur_score == 7036):
-                            cp.append(cur_cp)
                     else:
                         continue # if this isn't cheaper skip it.
                 else:
-                    cheapest_paths[next] = cur_score
-                    if(cur_score == 7036):
-                        cp.append(cur_cp)                    
+                    cheapest_paths[next] = cur_score                
             
-                Go(paths,cheapest_paths,next,endy,endx,cur_score,d+1,cur_cp,cp)
+                Go(paths,cheapest_paths,next,endy,endx,cur_score,d+1,cur_cp)
+
+def WalkPaths(paths,p,endy,endx,cur_path,score,ARGH,cp,d,too_big):
+
+    if(len(cur_path) > too_big):
+        # We assume the shortest path isn't going to be more than half the map
+        return
+
+    for next in paths[p].ends:
+        (ey,ex,ef) = next
+        e_score = paths[p].ends[next]
+        cur_score = score + e_score
+
+        new_path = copy.deepcopy(cur_path)
+        if(len(cur_path) == 1):
+            startp = cur_path[0]
+            new_path.extend(paths[startp].fullpath)
+            new_path=new_path[1:]  # get rid of the first one that has a facing.
+        new_path.extend(paths[p].fullpath)
+
+        if ey == endy and ex == endx:
+            if(cur_score == ARGH):
+                cp.append(new_path)
+
+
+        if(next in paths):
+            if(cur_score > paths[next].cheapest_score):
+            # ignore this one.
+                continue
+            else:
+                WalkPaths(paths,next,endy,endx,copy.deepcopy(new_path),cur_score,ARGH,cp,d,too_big)
+
 
 if(__name__ == '__main__'):
 
@@ -203,7 +220,9 @@ if(__name__ == '__main__'):
             row[endx] = '.'  # get rid of the confusing 'E
         map.append(row)
         y+=1
-    
+
+    too_big = (len(map) * len(map[0])) / 2
+
     facing = ">"
     my_path = Path(starty,startx,facing)
     paths = {}
@@ -213,45 +232,57 @@ if(__name__ == '__main__'):
 
     # We now have all of our 'paths'
 
+    print("We have all the paths?")
+
+    cheapest_paths = {}
+#    for p in [(starty,startx,'>'), (starty,startx,'<'), (starty,startx,'v'), (starty,startx,'^')]:
+    for p in [(starty,startx,'>')]:
+        if p in paths:
+            for end in paths[p].ends:
+                Go(paths,cheapest_paths,end,endy,endx,paths[p].ends[end],0,[])
+
+#    print("here")
+#    for cp in cheapest_paths:
+#        print(cp,"\n",cheapest_paths[cp])
+
+#    print(cheapest_paths)
+
+    blaa = []
+    for p in [(endy,endx,'>'), (endy,endx,'<'), (endy,endx,'v'), (endy,endx,'^')]:
+        if p in cheapest_paths:
+            blaa.append(cheapest_paths[p])
+
+    ARGH = blaa[0]
+    print("Part1:",blaa[0])
+
+
+# (1, 139, '>')
+# 102460
+
+## PRINT PATHS
 #    for p in paths:
 #        (x,y,f) = p
 #        print(x,y,f)
-#        print("  ",paths[p].score)
+#        print("  ",paths[p].fullpath)
+#        print("  ",paths[p].cheapest_score)
 #        for end in paths[p].ends:
 #            print("  ",end,paths[p].ends[end])
 
-    cheapest = -1
-    cheapest_paths = {}
-    cp = [ [(starty,startx,'^')] ]
-    for p in [(starty,startx,'>'), (starty,startx,'<'), (starty,startx,'v'), (starty,startx,'^')]:
+    # Finally, figure out the positions that can get you to the end the cheapest way.
+
+    cp = []
+    for p in [(starty,startx,'>')]:
         if p in paths:
 
             for end in paths[p].ends:
-                Go(paths,cheapest_paths,p,endy,endx,0,0,[],cp)
+                WalkPaths(paths,end,endy,endx,[p],paths[p].ends[end],ARGH,cp,0,too_big)
 
-    for p in [(endy,endx,'>'), (endy,endx,'<'), (endy,endx,'v'), (endy,endx,'^')]:
-        if p in cheapest_paths:
-            print("Part 1:",cheapest_paths[p])
+    all = [(endy,endx)]
+#    all = []
+    for c in range(len(cp)):
+#        print(cp[c],"\n")
+        all.extend(cp[c])
 
-    print(len(cp))
-    print(cp)
-
-
-#    print(len(cheapest_paths))
-#    for p in cheapest_paths:
-#        print(p,cheapest_paths[p])
-
-#    for p in paths:
-#        (x,y,f) = p
-#        print(x,y,f)
-#        for end in paths[p].ends:
-#            print("  ",end,paths[p].ends[end])
-
-#    for y in range(len(map)):
-#        print(''.join(map[y]))
-
-
-
-
+    print( len(list(set(all))))
 
 

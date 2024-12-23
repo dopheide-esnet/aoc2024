@@ -40,6 +40,8 @@ if(__name__ == '__main__'):
     
 
     print(A,B,C,prog)
+
+    # Part 2
     Borig = B
     Corig = C
     i = 12797356586  # skip the slow start
@@ -142,7 +144,7 @@ if(__name__ == '__main__'):
         elif op == 4:
             B = B ^ C
         elif op == 5:
-            output.append(str(combo % 9))
+            output.append(str(combo % 8))
         elif op == 6:
             B = int(A / (2 ** combo))
         elif op == 7:
