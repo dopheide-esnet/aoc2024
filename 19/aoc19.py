@@ -14,6 +14,7 @@ class Pattern:
         self.pattern = pattern
         self.towels = []
         self.possible = False
+        self.ways = {0: 1}
     def Possible(self,towels,i):
         p = self.pattern
 
@@ -36,6 +37,28 @@ class Pattern:
                     return
 #                print("next",new_i)
                 self.Possible(towels,new_i)
+    def NextPossible(self,towels,i):
+        p = self.pattern
+
+        counts = {}
+        for t in towels:
+            lt = len(t)
+            new_i = i + lt
+            if(new_i <= len(p) and p[i:new_i] == t):
+#                if(new_i == len(p)):
+#                    print("at the end, but don't break")
+                if(new_i in counts):
+                    counts[new_i] += 1
+                else:
+                    counts[new_i] = 1
+        for c in counts:
+            if(c in self.ways):
+                self.ways[c] += counts[c] * self.ways[i]
+            else:
+                self.ways[c] = counts[c] * self.ways[i]
+#        print(self.ways)
+
+                
 
 if(__name__ == '__main__'):
 
@@ -57,7 +80,6 @@ if(__name__ == '__main__'):
 
     total = 0
     for p in patterns:
-        print(p.pattern)
         p.Possible(towels,0)
         if(p.possible):
             total += 1
@@ -65,9 +87,41 @@ if(__name__ == '__main__'):
     print("Part1:",total)
 
     ## Part 2, to start, ignore the ones with no possible solution
+    total = 0
     for p in patterns:
+#        print(p.pattern)
         if(not p.possible):
             continue
+        for i in range(len(p.pattern)):
+            if(i in p.ways):
+                p.NextPossible(towels,i)
+
+#        print("Result:",p.ways[len(p.pattern)])
+        total += p.ways[len(p.pattern)]
+
+    print("Part2:",total)
+
+        # for each index, count up the number of way to get there and multiply it forward.
+
+
+        
+
+    # rrbgbr
+#    0 1 2
+#    r r b
+#       rb  
+
+#    paths to 2 (2)
+
+#    2  3  4
+#    b  g  b
+#         gb
+#       g  br
+    
+#    from 2, there are 2 paths to 4    2*2 = 4
+#                      1 path  to 5    2*1 = 2   == 6
+
+
 
 
 
